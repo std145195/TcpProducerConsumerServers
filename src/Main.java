@@ -2,9 +2,9 @@
  * Η κλάση Main εκκινεί τους servers, τους consumers και τους producers.
  */
 public class Main {
-    private static final int SERVERS = 2;
-    private static final int CONSUMERS = 1;
-    private static final int PRODUCERS = 1;
+    private static final int SERVERS = 5;
+    private static final int CONSUMERS = 2;
+    private static final int PRODUCERS = 2;
 
     public static void main(String[] args) {
         String[] hosts = new String[SERVERS];
