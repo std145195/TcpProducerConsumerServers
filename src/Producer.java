@@ -4,22 +4,18 @@ import java.net.Socket;
 import java.util.Random;
 
 public class Producer {
-    // This parameter represents how many times the client will send numbers to the server.
+    // Αριθμός επαναλήψεων αποστολής δεδομένων στον server
     private static final int REPEAT = 10;
 
     private final String name;
-
-    // The hosts of the servers
-    public final String[] hosts;
-
-    // The ports of the servers
-    public final int[] ports;
+    private final String[] hosts;
+    private final int[] ports;
 
     public Producer(String name, String[] hosts, int[] ports) {
         this.name = name;
 
         if (hosts.length != ports.length) {
-            throw new RuntimeException(name + " Server hosts and ports lists have different sizes.");
+            throw new IllegalArgumentException(name + ": Τα hosts και τα ports έχουν διαφορετικό μέγεθος.");
         }
 
         this.hosts = hosts;
@@ -29,49 +25,38 @@ public class Producer {
     }
 
     private void startCommunication() {
+        Random random = new Random();
+
         for (int i = 0; i < REPEAT; i++) {
             try {
-                // Sleep for a while...
-                Thread.sleep(1000 * (new Random().nextInt(10) + 1));
+                // Τυχαία καθυστέρηση πριν την αποστολή
+                Thread.sleep(1000 * (random.nextInt(10) + 1));
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                System.err.println(name + ": Διακοπή νήματος.");
+                Thread.currentThread().interrupt();
+                return;
             }
 
-            Socket socket = null;
+            int serverIndex = random.nextInt(hosts.length);
+            String host = hosts[serverIndex];
+            int port = ports[serverIndex];
 
-            // pick a random server.
-            int serverIndex = new Random().nextInt(hosts.length);
-            System.out.println(name + " Attempting to connect to host " + hosts[serverIndex] + " on port " + ports[serverIndex]);
-            try {
-                socket = new Socket(hosts[serverIndex], ports[serverIndex]);
-                System.out.println(name + " connected " + i);
+            System.out.println(name + " -> Προσπάθεια σύνδεσης στον server " + host + " στην πόρτα " + port);
+
+            try (Socket socket = new Socket(host, port);
+                 PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
+
+                System.out.println(name + " -> Συνδέθηκε με επιτυχία (" + i + ")");
+
+                int value = random.nextInt(91) + 10; // [10, 100]
+                out.println(value); // Αποστολή δεδομένων
+                System.out.println(name + " -> Απεστάλη: " + value);
+
             } catch (IOException e) {
-                System.err.println(name + " connection error " + i);
-                System.exit(1);
-            }
-
-            // The producer only writes.
-            PrintWriter out = null;
-            try {
-                out = new PrintWriter(socket.getOutputStream(), true);
-            } catch (IOException e) {
-                System.err.println(name + " Couldn't get I/O");
-                System.exit(1);
-            }
-
-            int value = new Random().nextInt(91) + 10; // [10, 100]
-
-            // send the value to server.
-            out.println(value);
-
-            // close the streams and the sockets
-            try {
-                out.close();
-                socket.close();
-            } catch (IOException e) {
-                System.err.println(name + " Error when closing sockets");
+                System.err.println(name + " -> Σφάλμα σύνδεσης στον server (" + i + ")");
             }
         }
-        System.out.println(name + " finished");
+
+        System.out.println(name + " -> Τερματισμός αποστολής δεδομένων.");
     }
 }

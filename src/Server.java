@@ -7,55 +7,45 @@ import java.util.Random;
 
 public class Server {
     private final String name;
-
     private ServerSocket serverSocket = null;
 
-    // We use an int for the storage of each server and we implement thread-safety using intrinsic locks.
+    // Αποθηκευτικός χώρος του server (με thread-safety μέσω intrinsic lock)
     private int storage;
     private final Object lock = new Object();
 
     /**
-     * The constructor starts the server.
-     *
-     * @param port the port that the server listens.
+     * Εκκίνηση του server.
      */
     public Server(String name, int port) {
         this.name = name;
-
-        // init storage
-        storage = new Random().nextInt(1000) + 1; //random value between [1,1000]
+        this.storage = new Random().nextInt(1000) + 1; // Τυχαία αρχική τιμή [1, 1000]
 
         try {
             serverSocket = new ServerSocket(port);
+            System.out.println(name + " -> Ο server ξεκίνησε στην πόρτα " + port);
+            acceptConnections();
         } catch (IOException e) {
-            System.err.println(name + " could not listen on port: " + port);
+            System.err.println(name + " -> Σφάλμα κατά το άνοιγμα της θύρας " + port);
             System.exit(1);
         }
-
-        System.out.println(name + " started");
-        accept();
     }
 
     /**
-     * This method initiates the accept process for the server and processes the requests from clients.
-     * It should be noted that both the consumers and producers use the same port,
-     * with negative or positive values respectively.
-     * Another implementation could use different ports for consumers and producers.
+     * Αποδοχή συνδέσεων από πελάτες και δημιουργία νέων νημάτων για κάθε σύνδεση.
      */
-    private void accept() {
+    private void acceptConnections() {
         while (true) {
             try {
                 Socket clientSocket = serverSocket.accept();
                 new ServerThread(clientSocket).start();
             } catch (IOException e) {
-                System.err.println(name + "accept failed.");
-                System.exit(1);
+                System.err.println(name + " -> Σφάλμα κατά την αποδοχή σύνδεσης.");
             }
         }
     }
 
     /**
-     * The thread which deals with the connection of each client.
+     * Κλάση για την επεξεργασία κάθε σύνδεσης πελάτη.
      */
     private class ServerThread extends Thread {
         private final Socket clientSocket;
@@ -66,46 +56,49 @@ public class Server {
 
         @Override
         public void run() {
-            // the server doesn't send any messages to the clients, so we only use the in stream.
-            BufferedReader in = null;
-            String inputLine = null;
-            try {
-                in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                // We only read once, so no need for a loop.
-                inputLine = in.readLine();
-                // the number from producer is positive and from the client negative.
-                int number = Integer.parseInt(inputLine);
-                if (number > 0) {
-                    System.out.println(name + " P Value: " + inputLine);
-                } else {
-                    System.out.println(name + " C Value: " + inputLine);
-                }
-
-                // we use a lock in a block while accessing the storage.
-                synchronized (lock) {
-                    if (storage + number > 1000) {
-                        System.out.println(name + " MAX VALUE LIMIT: " + storage);
-                    } else if (storage + number < 1) {
-                        System.out.println(name + " MIN VALUE LIMIT: " + storage);
-                    } else {
-                        storage += number;
-                        System.out.println(name + " NEW VALUE: " + storage);
-                    }
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
+                String inputLine = in.readLine();
+                if (inputLine != null) {
+                    processInput(inputLine);
                 }
             } catch (IOException e) {
-                System.err.println(name + " IOException...");
-            } catch (ArithmeticException e) {
-                System.err.println(name + " Invalid data: " + inputLine);
+                System.err.println(name + " -> Σφάλμα εισόδου/εξόδου.");
+            } finally {
+                try {
+                    clientSocket.close();
+                } catch (IOException e) {
+                    System.err.println(name + " -> Σφάλμα κατά το κλείσιμο του socket.");
+                }
+            }
+        }
+
+        /**
+         * Επεξεργασία της εισόδου από τον πελάτη.
+         */
+        private void processInput(String inputLine) {
+            int number;
+            try {
+                number = Integer.parseInt(inputLine);
+            } catch (NumberFormatException e) {
+                System.err.println(name + " -> Μη έγκυρα δεδομένα: " + inputLine);
+                return;
             }
 
-            // close the streams and the sockets
-            try {
-                if (in != null) {
-                    in.close();
+            if (number > 0) {
+                System.out.println(name + " -> Παραλήφθηκε από Producer: " + number);
+            } else {
+                System.out.println(name + " -> Παραλήφθηκε από Consumer: " + number);
+            }
+
+            synchronized (lock) {
+                if (storage + number > 1000) {
+                    System.out.println(name + " -> Υπέρβαση μέγιστης τιμής: " + storage);
+                } else if (storage + number < 1) {
+                    System.out.println(name + " -> Υπέρβαση ελάχιστης τιμής: " + storage);
+                } else {
+                    storage += number;
+                    System.out.println(name + " -> Νέα τιμή αποθήκευσης: " + storage);
                 }
-                clientSocket.close();
-            } catch (IOException e) {
-                System.err.println(name + " Error when closing sockets");
             }
         }
     }

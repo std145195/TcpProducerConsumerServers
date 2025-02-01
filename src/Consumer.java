@@ -4,22 +4,18 @@ import java.net.Socket;
 import java.util.Random;
 
 public class Consumer {
-    // This parameter represents how many times the client will send numbers to the server.
+    // Πόσες φορές ο client θα στείλει αριθμούς στον server
     private static final int REPEAT = 10;
 
     private final String name;
-
-    // The hosts of the servers
-    public final String[] hosts;
-
-    // The ports of the servers
-    public final int[] ports;
+    private final String[] hosts;
+    private final int[] ports;
 
     public Consumer(String name, String[] hosts, int[] ports) {
         this.name = name;
 
         if (hosts.length != ports.length) {
-            throw new RuntimeException(name + " Server hosts and ports lists have different sizes.");
+            throw new RuntimeException(name + " -> Η λίστα των hosts και των ports έχει διαφορετικά μεγέθη.");
         }
 
         this.hosts = hosts;
@@ -28,51 +24,43 @@ public class Consumer {
         startCommunication();
     }
 
+    /**
+     * Ξεκινά η επικοινωνία με τον server.
+     */
     private void startCommunication() {
+        Random random = new Random();
+
         for (int i = 0; i < REPEAT; i++) {
             try {
-                // Sleep for a while...
-                Thread.sleep(1000 * (new Random().nextInt(10) + 1));
+                // Αναμονή για κάποιο τυχαίο διάστημα [1-10] δευτερόλεπτα
+                Thread.sleep(1000 * (random.nextInt(10) + 1));
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                System.err.println(name + " -> Διακοπή κατά την αναμονή.");
+                Thread.currentThread().interrupt();
+                return;
             }
 
-            Socket socket = null;
+            // Επιλογή τυχαίου server
+            int serverIndex = random.nextInt(hosts.length);
+            System.out.println(name + " -> Σύνδεση με " + hosts[serverIndex] + " στην πόρτα " + ports[serverIndex]);
 
-            // pick a random server.
-            int serverIndex = new Random().nextInt(hosts.length);
-            System.out.println(name + " Attempting to connect to host " + hosts[serverIndex] + " on port " + ports[serverIndex]);
-            try {
-                socket = new Socket(hosts[serverIndex], ports[serverIndex]);
-                System.out.println(name + " connected " + i);
+            try (Socket socket = new Socket(hosts[serverIndex], ports[serverIndex]);
+                 PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
+
+                System.out.println(name + " -> Συνδέθηκε στον server (" + i + ")");
+
+                // Γεννάται ένας τυχαίος αρνητικός αριθμός [-100, -10]
+                int value = -(random.nextInt(91) + 10);
+
+                // Αποστολή της τιμής στον server
+                out.println(value);
+                System.out.println(name + " -> Στάλθηκε: " + value);
+
             } catch (IOException e) {
-                System.err.println(name + " connection error " + i);
-                System.exit(1);
-            }
-
-            // The consumer only writes.
-            PrintWriter out = null;
-            try {
-                out = new PrintWriter(socket.getOutputStream(), true);
-            } catch (IOException e) {
-                System.err.println(name + " Couldn't get I/O");
-                System.exit(1);
-            }
-
-            int value = new Random().nextInt(91) + 10; // [10, 100]
-            value -= 2 * value; //negative value for consumers
-
-            // send the value to server.
-            out.println(value);
-
-            // close the streams and the sockets
-            try {
-                out.close();
-                socket.close();
-            } catch (IOException e) {
-                System.err.println(name + " Error when closing sockets");
+                System.err.println(name + " -> Σφάλμα σύνδεσης (" + i + ")");
+                return;
             }
         }
-        System.out.println(name + " finished");
+        System.out.println(name + " -> Ολοκληρώθηκε η επικοινωνία.");
     }
 }
