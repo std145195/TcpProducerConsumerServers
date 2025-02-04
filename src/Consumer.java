@@ -4,16 +4,18 @@ import java.net.Socket;
 import java.util.Random;
 
 public class Consumer {
-    // Πόσες φορές ο client θα στείλει αριθμούς στον server
+    // Ορίζει πόσες φορές θα στείλει δεδομένα στον server
     private static final int REPEAT = 10;
 
-    private final String name;
-    private final String[] hosts;
-    private final int[] ports;
+    private final String name;    // Όνομα του consumer (π.χ. "Consumer0")
+    private final String[] hosts; // Λίστα διευθύνσεων IP των servers
+    private final int[] ports;    // Λίστα θυρών στις οποίες ακούνε οι servers
 
+    //Κατασκευαστής του Consumer.
     public Consumer(String name, String[] hosts, int[] ports) {
         this.name = name;
 
+        // Έλεγχος ότι οι πίνακες hosts και ports έχουν το ίδιο μέγεθος
         if (hosts.length != ports.length) {
             throw new RuntimeException(name + " -> Η λίστα των hosts και των ports έχει διαφορετικά μεγέθη.");
         }
@@ -21,35 +23,39 @@ public class Consumer {
         this.hosts = hosts;
         this.ports = ports;
 
-        startCommunication();
+        startCommunication(); // Έναρξη επικοινωνίας με servers
     }
 
     /**
-     * Ξεκινά η επικοινωνία με τον server.
+     * Η startCommunication διαχειρίζεται την επικοινωνία με τους servers.
+     * - Επιλέγει έναν server τυχαία.
+     * - Συνδέεται και στέλνει έναν τυχαίο αρνητικό αριθμό.
+     * - Επαναλαμβάνει τη διαδικασία για REPEAT φορές.
      */
     private void startCommunication() {
         Random random = new Random();
 
         for (int i = 0; i < REPEAT; i++) {
             try {
-                // Αναμονή για κάποιο τυχαίο διάστημα [1-10] δευτερόλεπτα
+                // Τυχαία καθυστέρηση [1, 10] δευτερόλεπτα μεταξύ αποστολών
                 Thread.sleep(1000 * (random.nextInt(10) + 1));
             } catch (InterruptedException e) {
                 System.err.println(name + " -> Διακοπή κατά την αναμονή.");
                 Thread.currentThread().interrupt();
-                return;
+                return; // Αν το νήμα διακοπεί, τερματίζει την αποστολή
             }
 
-            // Επιλογή τυχαίου server
+            // Επιλογή ενός τυχαίου server από τις διαθέσιμες διευθύνσεις και θύρες
             int serverIndex = random.nextInt(hosts.length);
             System.out.println(name + " -> Σύνδεση με " + hosts[serverIndex] + " στην πόρτα " + ports[serverIndex]);
 
+            // Προσπάθεια δημιουργίας σύνδεσης με τον επιλεγμένο server
             try (Socket socket = new Socket(hosts[serverIndex], ports[serverIndex]);
                  PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
 
                 System.out.println(name + " -> Συνδέθηκε στον server (" + i + ")");
 
-                // Γεννάται ένας τυχαίος αρνητικός αριθμός [-100, -10]
+                // Δημιουργία τυχαίου αρνητικού αριθμού μεταξύ [-100, -10]
                 int value = -(random.nextInt(91) + 10);
 
                 // Αποστολή της τιμής στον server
@@ -58,9 +64,10 @@ public class Consumer {
 
             } catch (IOException e) {
                 System.err.println(name + " -> Σφάλμα σύνδεσης (" + i + ")");
-                return;
+                return; // Αν αποτύχει η σύνδεση, ο consumer σταματάει
             }
         }
+
         System.out.println(name + " -> Ολοκληρώθηκε η επικοινωνία.");
     }
 }
