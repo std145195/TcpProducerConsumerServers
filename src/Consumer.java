@@ -54,7 +54,7 @@ public class Consumer {
 
                 // Αποστολή της τιμής στον server
                 out.println(value);
-                System.out.println(name + " -> Στάλθηκε: " + value);
+                System.out.println(name + " -> Στάλθηκε " + value + " στον Server " + hosts[serverIndex] + ":" + ports[serverIndex]);
 
             } catch (IOException e) {
                 System.err.println(name + " -> Σφάλμα σύνδεσης (" + i + ")");

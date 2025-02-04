@@ -14,7 +14,7 @@ public class Main {
         for (int i = 0; i < SERVERS; i++) {
             hosts[i] = "127.0.0.1";
             ports[i] = 9000 + i;
-            new ServerStarter("S" + i, ports[i]).start();
+            new ServerStarter("Server" + i, ports[i]).start();
         }
 
         // Δίνουμε λίγο χρόνο στους servers να εκκινήσουν
@@ -27,12 +27,12 @@ public class Main {
 
         // Εκκίνηση των consumers
         for (int i = 0; i < CONSUMERS; i++) {
-            new ConsumerStarter("C" + i, hosts, ports).start();
+            new ConsumerStarter("Consumer" + i, hosts, ports).start();
         }
 
         // Εκκίνηση των producers
         for (int i = 0; i < PRODUCERS; i++) {
-            new ProducerStarter("P" + i, hosts, ports).start();
+            new ProducerStarter("Producer" + i, hosts, ports).start();
         }
     }
 

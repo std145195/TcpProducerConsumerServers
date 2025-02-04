@@ -50,7 +50,7 @@ public class Producer {
 
                 int value = random.nextInt(91) + 10; // [10, 100]
                 out.println(value); // Αποστολή δεδομένων
-                System.out.println(name + " -> Απεστάλη: " + value);
+                System.out.println(name + " -> Στάλθηκε " + value + " στον Server " + hosts[serverIndex] + ":" + ports[serverIndex]);
 
             } catch (IOException e) {
                 System.err.println(name + " -> Σφάλμα σύνδεσης στον server (" + i + ")");
